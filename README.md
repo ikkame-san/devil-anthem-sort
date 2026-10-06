@@ -1,4 +1,4 @@
-# Devil ANTHEM. SORT
+# Devil ANTHEM.楽曲ソート
 
 Devil ANTHEM. の好きな曲を選び、自分だけのランキングを作る非公式ファンサイト。
 HTML / CSS / JavaScript の静的サイトで、GitHub Pages のプロジェクト配下にそのまま公開できます。インストールやビルドは不要です。
