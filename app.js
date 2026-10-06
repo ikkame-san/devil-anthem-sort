@@ -88,8 +88,7 @@ function editor(node){
   ensureDraft(node);
   const ids=node.status==='sample'?node.sample:node.ids;
   if(ids.length===2)return `<div class="sort-heading"><h2>どっちが好き？</h2><p>好きなほうをタップしてください。</p></div><div class="rank-editor"><div class="tap-options count-2">${ids.map(id=>{const item=song(id);return `<div class="rank-option"><button class="rank-pick favorite-pick" data-favorite-pick="${escape(id)}" aria-label="${escape(item.title)}のほうが好き">${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span><span class="favorite-label">こちらが好き</span></button>${videoButton(item)}</div>`;}).join('')}</div></div>`;
-  const complete=draft.length===ids.length;
-  return `<div class="sort-heading"><h2>好きな順にタップしてください</h2><p id="rank-instruction" aria-live="polite">${complete?'選んだ順番で順位を確定します。':`${draft.length+1}番目に好きな曲を選んでください。`}</p></div><div class="rank-editor"><div class="tap-options count-${ids.length}">${ids.map(id=>{const item=song(id),rank=draft.indexOf(id)+1;return `<div class="rank-option"><button class="rank-pick ${rank?'picked':''}" data-rank-pick="${escape(id)}" aria-pressed="${!!rank}" aria-label="${escape(item.title)}${rank?`、${rank}位、タップして選択解除`:'、順位を選ぶ'}"><span class="pick-number">${rank||'—'}</span>${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span></button>${videoButton(item)}</div>`;}).join('')}</div><div class="rank-editor-footer"><button class="secondary" data-action="reset-order" ${draft.length?'':'disabled'}>選び直す</button><button class="primary" data-action="confirm-order" ${complete?'':'disabled'}>この順番で確定する</button></div><p class="small-note rank-help">選んだ曲をもう一度タップすると、その曲の選択を取り消せます。</p></div>`;
+  return `<div class="sort-heading"><h2>好きな順にタップしてください</h2><p id="rank-instruction" aria-live="polite">${draft.length+1}番目に好きな曲を選んでください。</p></div><div class="rank-editor"><div class="tap-options count-${ids.length}">${ids.map(id=>{const item=song(id),rank=draft.indexOf(id)+1;return `<div class="rank-option"><button class="rank-pick ${rank?'picked':''}" data-rank-pick="${escape(id)}" aria-pressed="${!!rank}" aria-label="${escape(item.title)}${rank?`、${rank}位、タップして選択解除`:'、順位を選ぶ'}"><span class="pick-number">${rank||'—'}</span>${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span></button>${videoButton(item)}</div>`;}).join('')}</div><div class="rank-editor-footer"><button class="secondary" data-action="reset-order" ${draft.length?'':'disabled'}>選び直す</button></div><p class="small-note rank-help">すべて選ぶと次に進みます。途中の選択は再タップで取り消せます。</p></div>`;
 }
 function chip(id){return `<span class="song-chip">${escape(song(id).title)}</span>`;}
 function compareHTML(node){
@@ -239,7 +238,14 @@ app.addEventListener('click',async event=>{
     if(button.dataset.tab){tab=button.dataset.tab;render();return;}
     if(button.dataset.limit){preferredK=button.dataset.limit==='all'?Math.max(selection.size,1):Number(button.dataset.limit);persist();updateCatalog();return;}
     if(button.dataset.video){watchVideo(button.dataset.video);return;}
-    if(button.dataset.rankPick){const id=button.dataset.rankPick,ids=activeNode(session).status==='sample'?activeNode(session).sample:activeNode(session).ids;if(!ids.includes(id))return;const index=draft.indexOf(id);if(index<0)draft.push(id);else draft.splice(index,1);render();document.querySelector(`[data-rank-pick="${CSS.escape(id)}"]`)?.focus({preventScroll:true});return;}
+    if(button.dataset.rankPick){
+      const node=activeNode(session);if(!node||!['sample','manual'].includes(node.status))return;
+      const id=button.dataset.rankPick,ids=node.status==='sample'?node.sample:node.ids;
+      if(!ids.includes(id))return;
+      const index=draft.indexOf(id);if(index<0)draft.push(id);else draft.splice(index,1);
+      if(draft.length===ids.length){commit(node.status==='sample'?rankSample(session,draft):rankSmall(session,draft));return;}
+      render();document.querySelector(`[data-rank-pick="${CSS.escape(id)}"]`)?.focus({preventScroll:true});return;
+    }
     if(button.dataset.favoritePick){const node=activeNode(session),id=button.dataset.favoritePick;if(node?.status!=='manual'||node.ids.length!==2||!node.ids.includes(id))return;commit(rankSmall(session,[id,...node.ids.filter(other=>other!==id)]));return;}
     if(button.dataset.choice){commit(choose(session,button.dataset.choice==='opponent'));return;}
     switch(button.dataset.action){
@@ -253,7 +259,6 @@ app.addEventListener('click',async event=>{
         if(session&&!(await confirmRestart()))return;
         session=createSession([...selection],selectedLimit());history=[];completedAt='';shared=null;draftKey='';view='sort';persist();render();focusMain();break;
       case 'reset-order':draft=[];render();break;
-      case 'confirm-order':{const node=activeNode(session),ids=node.status==='sample'?node.sample:node.ids;if(draft.length===ids.length)commit(node.status==='sample'?rankSample(session,draft):rankSmall(session,draft));break;}
       case 'undo':if(history.length){session=history.pop();shared=null;completedAt='';draftKey='';view='sort';persist();render();}break;
       case 'pause':view='setup';render();focusMain();break;
       case 'to-setup':shared=null;window.history.replaceState(null,'',location.pathname+location.search);view='setup';render();focusMain();break;
