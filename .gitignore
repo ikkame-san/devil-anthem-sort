@@ -3,6 +3,7 @@
 .tools/
 node_modules/
 test-results/
+jackets/
 *.log
 .env*
 .DS_Store
