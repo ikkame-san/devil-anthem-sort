@@ -112,7 +112,12 @@ function shareURL(){
 function rankingText(){const data=resultData();return `Devil ANTHEM. マイランキング TOP ${data.songs.length}${data.owner?` / ${data.owner}`:''}\n${data.songs.map((title,i)=>`${i+1}. ${title}`).join('\n')}\n#デビアンソート #DevilANTHEM`;
 }
 function xURL(){const data=resultData();return `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Devil ANTHEM. マイランキング TOP ${data.songs.length}\n${data.songs.slice(0,3).map((t,i)=>`${i+1}. ${t}`).join('\n')}\n#デビアンソート #DevilANTHEM`)}&url=${encodeURIComponent(shareURL())}`;}
-async function copyText(text){if (!navigator.clipboard?.writeText) throw new Error('クリップボードに対応していません。画像を保存して共有してください。');await navigator.clipboard.writeText(text);}
+async function copyText(text){
+  try {if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);return;}} catch { /* Use the compatible copy path below. */ }
+  const field=document.createElement('textarea');field.value=text;field.setAttribute('aria-label','コピーするテキスト');field.style.cssText='position:fixed;left:0;top:0;opacity:0;';document.body.append(field);field.select();
+  let copied=false;try{copied=document.execCommand('copy');}catch{copied=false;}field.remove();
+  if(!copied){const existing=document.querySelector('#manual-copy');if(existing)existing.remove();const fallback=document.createElement('textarea');fallback.id='manual-copy';fallback.value=text;fallback.readOnly=true;fallback.setAttribute('aria-label','手動でコピーするテキスト');fallback.style.cssText='width:100%;height:90px;margin-top:12px;font:inherit;font-size:11px;';document.querySelector('.result-actions').append(fallback);fallback.focus();fallback.select();throw new Error('コピーできませんでした。表示されたテキストを選んでコピーしてください。');}
+}
 function wrapText(ctx,text,maxWidth){const lines=[];let line='';for(const char of Array.from(text)){if(line&&ctx.measureText(line+char).width>maxWidth){lines.push(line);line=char;}else line+=char;}if(line)lines.push(line);return lines;}
 async function rankingPNG(){
   if (document.fonts?.ready) await document.fonts.ready;
