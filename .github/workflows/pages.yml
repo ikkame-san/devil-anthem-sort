@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm ci
       - name: Check JavaScript and sorting algorithm
         run: |
           npm run check
@@ -29,8 +30,9 @@ jobs:
       - name: Package public files only
         run: |
           mkdir _site
-          cp index.html styles.css app.js engine.js songs.js favicon.svg _site/
+          cp index.html styles.css app.js engine.js songs.js jackets.js favicon.svg _site/
           sed -i "s|styles.css|styles.css?v=$GITHUB_SHA|;s|app.js|app.js?v=$GITHUB_SHA|" _site/index.html
+          sed -i "s|./jackets.js|./jackets.js?v=$GITHUB_SHA|" _site/app.js
           touch _site/.nojekyll
       - name: Package official jacket images
         run: node scripts/build-jackets.mjs _site/jackets
