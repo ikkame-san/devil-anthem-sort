@@ -1,0 +1,8 @@
+.research/
+.catalog.html
+.tools/
+node_modules/
+test-results/
+*.log
+.env*
+.DS_Store
