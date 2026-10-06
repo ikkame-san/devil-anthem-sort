@@ -149,10 +149,10 @@ async function rankingPNG(){
   const data=resultData(),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('画像を作成できませんでした。別のブラウザをお試しください。');
   const font='system-ui, "Segoe UI", "Noto Sans JP", sans-serif';
-  const columns=data.songs.length<=16?1:data.songs.length<=33?2:3;
-  const columnGap=20,columnWidth=(952-columnGap*(columns-1))/columns;
+  const columns=data.songs.length<=16?1:data.songs.length<=33?2:data.songs.length<=51?3:4;
+  const columnGap=columns===4?16:20,columnWidth=(952-columnGap*(columns-1))/columns;
   const compact=columns===3;
-  const lower={fontSize:columns===1?30:compact?22:26,lineHeight:columns===1?42:compact?30:36,jacketSize:compact?56:72,jacketInset:compact?48:70,textInset:compact?116:158,rankInset:compact?24:34,rankSize:compact?22:28,minHeight:compact?94:104};
+  const lower=columns===4?{fontSize:19,lineHeight:27,jacketSize:44,jacketInset:38,textInset:94,rankInset:19,rankSize:18,minHeight:84}:{fontSize:columns===1?30:compact?22:26,lineHeight:columns===1?42:compact?30:36,jacketSize:compact?56:72,jacketInset:compact?48:70,textInset:compact?116:158,rankInset:compact?24:34,rankSize:compact?22:28,minHeight:compact?94:104};
   const rows=data.songs.map((title,i)=>{
     const topThree=i<3,lineHeight=topThree?48:lower.lineHeight,fontSize=topThree?34:lower.fontSize;
     ctx.font=`700 ${fontSize}px ${font}`;
