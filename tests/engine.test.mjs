@@ -54,4 +54,8 @@ test('catalogue has stable unique identifiers, decoded titles and official sourc
   assert.equal(new Set(SONGS.map(s=>s.id)).size,SONGS.length);assert.equal(new Set(SONGS.map(s=>s.title.toLowerCase())).size,SONGS.length);
   for(const song of SONGS){assert.ok(song.id.startsWith('s-'));assert.ok(!/&#\d+;/.test(song.title+song.release));assert.ok(song.sources.length>0);assert.ok(song.sources.every(s=>s.url.startsWith('https://devilanthem.net/')));assert.match(song.date,/^\d{4}-\d{2}-\d{2}$/);}
   assert.equal(SONGS.filter(s=>s.date>'2026-10-06').length,4);
+  for(const song of SONGS){
+    assert.match(song.artwork,/^https:\/\/devilanthem\.net\/discography\/images\/[a-z0-9]+\.(jpg|png|jpeg)$/);
+    if(song.video){assert.match(song.video.id,/^[a-zA-Z0-9_-]{11}$/);assert.match(song.video.source,/^https:\/\/www\.youtube\.com\/playlist\?list=PLFWX8yVCqaW/);assert.ok(song.video.title.includes('Devil ANTHEM.'));}
+  }
 });
