@@ -53,7 +53,7 @@ npm test
 
 93曲に公式リリースのジャケット画像を設定し、曲一覧・比較・順位付け・結果画面に表示します。画像は公式サイトのURLを参照し、取得できない場合は音符の表示に戻ります。共有画像は曲名と順位を読みやすく配置します。
 
-公式YouTubeチャンネルの[MV](https://www.youtube.com/playlist?list=PLFWX8yVCqaWz-8orvrNZso1J8vRw7kasO)、[公式音源](https://www.youtube.com/playlist?list=PLFWX8yVCqaWyErIlgVlLZnRyy-L_m1ogF)、[ダンス動画](https://www.youtube.com/playlist?list=PLFWX8yVCqaWyltjsD_KvUTib-zErW2GQM)、[ライブ映像](https://www.youtube.com/playlist?list=PLFWX8yVCqaWz8VvyElg7WvjITQjaV6ECT)から72曲の動画を確認しています。MVを優先し、動画ボタンを押したときだけプレーヤーを読み込みます。閉じると再生を停止します。動画未確認の曲・追加曲には再生ボタンを表示しません。
+公式YouTubeチャンネルの[MV](https://www.youtube.com/playlist?list=PLFWX8yVCqaWz-8orvrNZso1J8vRw7kasO)、[公式音源](https://www.youtube.com/playlist?list=PLFWX8yVCqaWyErIlgVlLZnRyy-L_m1ogF)、[ダンス動画](https://www.youtube.com/playlist?list=PLFWX8yVCqaWyltjsD_KvUTib-zErW2GQM)、[ライブ映像](https://www.youtube.com/playlist?list=PLFWX8yVCqaWz8VvyElg7WvjITQjaV6ECT)から72曲の動画を確認しています。MVを優先し、動画ボタンを押したときだけプレーヤーを読み込みます。閉じると再生を停止します。動画未確認の曲・追加曲には「YouTubeで検索」を表示し、曲名と「Devil ANTHEM.」を組み合わせた検索結果を別タブで開きます。曲一覧・順位付け・比較・共有結果の各画面で使えます。
 
 `scripts/catalog-research.mjs` と `scripts/build-catalog.mjs` は公式公開曲目を確認・整理する保守用ツールです。`scripts/build-media.mjs` は公式プレイリストとリリースページからジャケット・動画を対応付けます。研究用の一時ファイルはGitと公開対象から除外しています。ページ構造が変わった場合は、生成データを公式情報と照合してください。
 
