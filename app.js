@@ -158,21 +158,27 @@ async function rankingPNG(){
   const data=resultData(),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('画像を作成できませんでした。別のブラウザをお試しください。');
   const font='system-ui, "Segoe UI", "Noto Sans JP", sans-serif';
+  const columns=data.songs.length<=16?1:data.songs.length<=33?2:3;
+  const columnGap=20,columnWidth=(952-columnGap*(columns-1))/columns;
+  const compact=columns===3;
+  const lower={fontSize:columns===1?30:compact?22:26,lineHeight:columns===1?42:compact?30:36,jacketSize:compact?56:72,jacketInset:compact?48:70,textInset:compact?116:158,rankInset:compact?24:34,rankSize:compact?22:28,minHeight:compact?94:104};
   const rows=data.songs.map((title,i)=>{
-    const topThree=i<3,lineHeight=topThree?48:36;
-    ctx.font=`700 ${topThree?34:26}px ${font}`;
-    const lines=wrapText(ctx,title,topThree?680:290);
-    return {lines,lineHeight,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(topThree?138:104,lines.length*lineHeight+(topThree?38:28))};
+    const topThree=i<3,lineHeight=topThree?48:lower.lineHeight,fontSize=topThree?34:lower.fontSize;
+    ctx.font=`700 ${fontSize}px ${font}`;
+    const lines=wrapText(ctx,title,topThree?680:columnWidth-lower.textInset-18);
+    return {lines,lineHeight,fontSize,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(topThree?138:lower.minHeight,lines.length*lineHeight+(topThree?38:28))};
   });
   ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
   const header=260+Math.min(names.length,2)*36;
   let nextY=header;
   for(const row of rows.slice(0,3)){Object.assign(row,{x:64,y:nextY,width:952});nextY+=row.height;}
-  const columnTop=nextY,leftCount=Math.ceil(Math.max(0,rows.length-3)/2);
-  for(let column=0;column<2;column++){
+  const columnTop=nextY,remaining=Math.max(0,rows.length-3);
+  let start=3;
+  for(let column=0;column<columns;column++){
     let columnY=columnTop;
-    const start=3+column*leftCount,end=column===0?3+leftCount:rows.length;
-    for(const row of rows.slice(start,end)){Object.assign(row,{x:64+column*486,y:columnY,width:466});columnY+=row.height;}
+    const count=Math.floor(remaining/columns)+(column<remaining%columns?1:0),end=start+count;
+    for(const row of rows.slice(start,end)){Object.assign(row,{x:64+column*(columnWidth+columnGap),y:columnY,width:columnWidth});columnY+=row.height;}
+    start=end;
     nextY=Math.max(nextY,columnY);
   }
   const height=nextY+130;
@@ -205,12 +211,12 @@ async function rankingPNG(){
       ctx.fillStyle=shine;ctx.beginPath();ctx.arc(126,cy,37,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=metal.rim;ctx.stroke();
       ctx.beginPath();ctx.arc(126,cy,31,0,Math.PI*2);ctx.strokeStyle='#ffffff99';ctx.stroke();
     }
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=metal?.ink||'#5e6878';ctx.font=`700 ${metal?39:28}px ${font}`;ctx.fillText(String(i+1),metal?126:x+34,cy);ctx.restore();
-    const jacketSize=i<3?100:72;
-    await drawRankingJacket(ctx,row.artwork,metal?188:x+70,cy-jacketSize/2,jacketSize);
-    ctx.fillStyle='#172033';ctx.font=`700 ${i<3?34:26}px ${font}`;
-    const top=y+(row.height-10-row.lines.length*row.lineHeight)/2+(i<3?37:28);
-    row.lines.forEach((line,j)=>ctx.fillText(line,metal?316:x+158,top+j*row.lineHeight));
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=metal?.ink||'#5e6878';ctx.font=`700 ${metal?39:lower.rankSize}px ${font}`;ctx.fillText(String(i+1),metal?126:x+lower.rankInset,cy);ctx.restore();
+    const jacketSize=i<3?100:lower.jacketSize;
+    await drawRankingJacket(ctx,row.artwork,metal?188:x+lower.jacketInset,cy-jacketSize/2,jacketSize);
+    ctx.fillStyle='#172033';ctx.font=`700 ${row.fontSize}px ${font}`;
+    const top=y+(row.height-10-row.lines.length*row.lineHeight)/2+Math.round(row.lineHeight*.77);
+    row.lines.forEach((line,j)=>ctx.fillText(line,metal?316:x+lower.textInset,top+j*row.lineHeight));
   }
   ctx.fillStyle='#5e6878';ctx.font=`500 20px ${font}`;ctx.textAlign='right';ctx.fillText(`${data.date.replaceAll('-','.')} ／ ${data.total}曲から`,1016,height-65);
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像を生成できませんでした。')),'image/png'));
