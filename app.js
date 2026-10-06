@@ -5,7 +5,7 @@ const app=document.querySelector('#app');
 const STORAGE='devil-anthem-sort:v1';
 const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-let selection=new Set(), preferredK=10, custom=[], session=null, history=[], owner='', completedAt='', showUpcoming=false;
+let selection=new Set(), preferredK=15, custom=[], session=null, history=[], owner='', completedAt='', showUpcoming=false;
 let view='setup', search='', year='', tab='all', draft=[], draftKey='', shared=null, storageOK=true;
 let toastTimer;
 
@@ -19,7 +19,7 @@ function load(){
     custom=Array.isArray(data.custom)?data.custom.filter(s=>typeof s.id==='string'&&s.id.startsWith('custom-')&&typeof s.title==='string'&&s.title.length<=180).slice(0,200):[];
     const known=new Set(allSongs().map(s=>s.id));
     selection=new Set(Array.isArray(data.selection)?data.selection.filter(id=>known.has(id)):[]);
-    preferredK=Number.isInteger(data.preferredK)&&data.preferredK>0?Math.min(data.preferredK,300):10;
+    preferredK=Number.isInteger(data.preferredK)&&data.preferredK>0?Math.min(data.preferredK,300):15;
     owner=typeof data.owner==='string'?data.owner.slice(0,50):'';
     completedAt=typeof data.completedAt==='string'?data.completedAt:'';
     showUpcoming=Boolean(data.showUpcoming);
@@ -63,7 +63,7 @@ function setupHTML(){
   return `${session?`<div class="resume-banner"><div><strong>${activeNode(session)?'前回のソートが保存されています':'前回のランキングが保存されています'}</strong><p>${session.total}曲から 上位${session.limit}曲 ／ ${session.decisions}回の選択</p></div><button class="secondary" data-action="resume">${activeNode(session)?'続きから再開 ↗':'結果を見る ↗'}</button></div>`:''}
   
   ${steps(0)}<div class="setup-layout"><section aria-labelledby="select-heading"><div class="section-heading"><h2 id="select-heading">ランキングに入れたい曲を選ぶ</h2></div><div class="search-row"><div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg><input id="search" type="search" placeholder="曲名で検索" aria-label="曲名で検索" value="${escape(search)}"></div><select id="year" aria-label="発売年で絞り込み"><option value="">すべての年代</option>${[...new Set(SONGS.map(s=>s.date.slice(0,4)))].sort().reverse().map(y=>`<option ${year===y?'selected':''}>${y}</option>`).join('')}</select></div><div class="catalog-toolbar"><div class="tabs" role="group" aria-label="曲リストの表示"><button class="tab ${tab==='all'?'active':''}" data-tab="all" aria-pressed="${tab==='all'}">すべて <span id="available-count">${available}</span></button><button class="tab ${tab==='selected'?'active':''}" data-tab="selected" aria-pressed="${tab==='selected'}">選択中 <span id="tab-count">${selection.size}</span></button></div><div class="catalog-actions"><button class="text-button" data-action="select-visible">表示中をすべて選択</button><button class="text-button" data-action="clear">選択解除</button></div></div><div id="song-grid" class="song-grid" role="group" aria-label="ランキング対象の曲"></div><label class="check-label"><input id="upcoming" type="checkbox" ${showUpcoming?'checked':''}>発売予定の曲も表示する</label><p class="catalog-note">再録音源は同じ曲としてまとめています。リミックスは別曲として掲載。<br><a href="https://devilanthem.net/#/discography/" target="_blank" rel="noopener noreferrer">公式ディスコグラフィー ↗</a> をもとに収録 ／ 更新 ${CATALOG_DATE.replaceAll('-','.')}</p><details class="custom-songs"><summary>見つからない曲を追加する ＋</summary><form id="custom-form" class="custom-entry"><input id="custom-title" maxlength="180" placeholder="追加したい曲名" aria-label="追加したい曲名" required><button type="submit">追加 ＋</button></form><p class="catalog-note">追加した曲はこのブラウザに保存され、ランキング画像・共有リンクにも表示されます。</p></details></section>
-  <aside><div class="settings" id="sort-settings"><h2>ランキング設定</h2><div class="selected-count"><strong id="selection-count">${String(selection.size)}</strong><span>曲 / <span id="selection-total">${available}</span></span></div><p class="selection-label">選んだ曲だけでランキングを作ります</p><div class="settings-divider"></div><label class="settings-label" for="rank-limit">何位まで作るか</label><div class="rank-number"><input id="rank-limit" type="number" min="1" max="${Math.max(selection.size,1)}" value="${selection.size?selectedLimit():preferredK}" inputmode="numeric"><span>位まで</span></div><div class="presets"><button class="preset" data-limit="10">上位10曲</button><button class="preset" data-limit="20">上位20曲</button><button class="preset" data-limit="all">全曲</button></div><p class="small-note" id="limit-note">${selection.size?`${selection.size}曲の中から、上位${selectedLimit()}曲を決めます。`:'ランキング対象の曲を選んでください。'}</p><button class="primary start-button" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button><p class="small-note center">途中で閉じても、続きから再開できます。</p></div></aside></div><div class="mobile-start"><div><p id="mobile-selection">選択中 ${selection.size}曲 / 上位${selectedLimit()}曲</p><button class="text-button" data-action="settings">ランキング設定</button></div><button class="primary" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button></div>`;
+  <aside><div class="settings" id="sort-settings"><h2>ランキング設定</h2><div class="selected-count"><strong id="selection-count">${String(selection.size)}</strong><span>曲 / <span id="selection-total">${available}</span></span></div><p class="selection-label">選んだ曲だけでランキングを作ります</p><div class="settings-divider"></div><label class="settings-label" for="rank-limit">何位まで作るか</label><div class="rank-number"><input id="rank-limit" type="number" min="1" max="${Math.max(selection.size,1)}" value="${selection.size?selectedLimit():preferredK}" inputmode="numeric"><span>位まで</span></div><div class="presets"><button class="preset" data-limit="15">上位15曲</button><button class="preset" data-limit="25">上位25曲</button><button class="preset" data-limit="all">全曲</button></div><p class="small-note" id="limit-note">${selection.size?`${selection.size}曲の中から、上位${selectedLimit()}曲を決めます。`:'ランキング対象の曲を選んでください。'}</p><button class="primary start-button" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button><p class="small-note center">途中で閉じても、続きから再開できます。</p></div></aside></div><div class="mobile-start"><div><p id="mobile-selection">選択中 ${selection.size}曲 / 上位${selectedLimit()}曲</p><button class="text-button" data-action="settings">ランキング設定</button></div><button class="primary" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button></div>`;
 }
 function updateCatalog(){
   const grid=document.querySelector('#song-grid');
@@ -87,14 +87,15 @@ function ensureDraft(node){const key=keyFor(node);if(key!==draftKey){draftKey=ke
 function editor(node){
   ensureDraft(node);
   const ids=node.status==='sample'?node.sample:node.ids;
+  if(ids.length===2)return `<div class="sort-heading"><h2>どっちが好き？</h2><p>好きなほうをタップしてください。</p></div><div class="rank-editor"><div class="tap-options count-2">${ids.map(id=>{const item=song(id);return `<div class="rank-option"><button class="rank-pick favorite-pick" data-favorite-pick="${escape(id)}" aria-label="${escape(item.title)}のほうが好き">${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span><span class="favorite-label">こちらが好き</span></button>${videoButton(item)}</div>`;}).join('')}</div></div>`;
   const complete=draft.length===ids.length;
-  return `<div class="sort-heading"><h2>好きな順にタップしてください</h2><p id="rank-instruction" aria-live="polite">${complete?'選んだ順番で順位を確定します。':`${draft.length+1}番目に好きな曲を選んでください。`}</p></div><div class="rank-editor"><div class="tap-options">${ids.map(id=>{const item=song(id),rank=draft.indexOf(id)+1;return `<div class="rank-option"><button class="rank-pick ${rank?'picked':''}" data-rank-pick="${escape(id)}" aria-pressed="${!!rank}" aria-label="${escape(item.title)}${rank?`、${rank}位、タップして選択解除`:'、順位を選ぶ'}"><span class="pick-number">${rank||'—'}</span>${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span></button>${videoButton(item)}</div>`;}).join('')}</div><div class="rank-editor-footer"><button class="secondary" data-action="reset-order" ${draft.length?'':'disabled'}>選び直す</button><button class="primary" data-action="confirm-order" ${complete?'':'disabled'}>この順番で確定する</button></div><p class="small-note rank-help">選んだ曲をもう一度タップすると、その曲の選択を取り消せます。</p></div>`;
+  return `<div class="sort-heading"><h2>好きな順にタップしてください</h2><p id="rank-instruction" aria-live="polite">${complete?'選んだ順番で順位を確定します。':`${draft.length+1}番目に好きな曲を選んでください。`}</p></div><div class="rank-editor"><div class="tap-options count-${ids.length}">${ids.map(id=>{const item=song(id),rank=draft.indexOf(id)+1;return `<div class="rank-option"><button class="rank-pick ${rank?'picked':''}" data-rank-pick="${escape(id)}" aria-pressed="${!!rank}" aria-label="${escape(item.title)}${rank?`、${rank}位、タップして選択解除`:'、順位を選ぶ'}"><span class="pick-number">${rank||'—'}</span>${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span></button>${videoButton(item)}</div>`;}).join('')}</div><div class="rank-editor-footer"><button class="secondary" data-action="reset-order" ${draft.length?'':'disabled'}>選び直す</button><button class="primary" data-action="confirm-order" ${complete?'':'disabled'}>この順番で確定する</button></div><p class="small-note rank-help">選んだ曲をもう一度タップすると、その曲の選択を取り消せます。</p></div>`;
 }
 function chip(id){return `<span class="song-chip">${escape(song(id).title)}</span>`;}
 function compareHTML(node){
   const opponent=song(node.queue[node.cursor]),pivot=song(node.pivot);
   const card=(item,choice)=>`<div class="compare-option"><button class="compare-card ${choice==='pivot'?'pivot':''}" data-choice="${choice}"><span class="eyebrow">${choice==='pivot'?'比較の基準（固定）':'比較する曲'}</span>${jacket(item,'eager')}<span class="compare-title">${escape(item.title)}</span><span class="compare-footer">こちらが好き <span class="key-hint">${choice==='pivot'?'→':'←'} キー</span></span></button>${videoButton(item)}</div>`;
-  return `<div class="sort-heading"><h2>どちらの曲が好きですか？</h2><p>好きなほうをタップしてください。</p></div><div class="comparison">${card(opponent,'opponent')}<span class="versus" aria-hidden="true">比較</span>${card(pivot,'pivot')}</div><section class="partition-board" aria-label="比較済みの曲"><div class="partition-heading"><h3>比較済みの曲</h3><span>${node.cursor} / ${node.queue.length}</span></div><div class="partition-columns"><div class="partition-list"><div class="partition-label"><span>← この曲より好き</span><span>${node.high.length}曲</span></div><div class="partition-items">${node.high.map(chip).join('')}</div></div><div class="pivot-marker"><strong>${escape(pivot.title)}</strong></div><div class="partition-list low"><div class="partition-label"><span>この曲より下 →</span><span>${node.low.length}曲</span></div><div class="partition-items">${node.low.map(chip).join('')}</div></div></div></section>`;
+  return `<div class="sort-heading"><h2>どっちが好き？</h2><p>好きなほうをタップしてください。</p></div><div class="comparison">${card(opponent,'opponent')}<span class="versus" aria-hidden="true">比較</span>${card(pivot,'pivot')}</div><section class="partition-board" aria-label="比較済みの曲"><div class="partition-heading"><h3>比較済みの曲</h3><span>${node.cursor} / ${node.queue.length}</span></div><div class="partition-columns"><div class="partition-list"><div class="partition-label"><span>← この曲より好き</span><span>${node.high.length}曲</span></div><div class="partition-items">${node.high.map(chip).join('')}</div></div><div class="pivot-marker"><strong>${escape(pivot.title)}</strong></div><div class="partition-list low"><div class="partition-label"><span>この曲より下 →</span><span>${node.low.length}曲</span></div><div class="partition-items">${node.low.map(chip).join('')}</div></div></div></section>`;
 }
 function sortHTML(){
   const node=activeNode(session);
@@ -167,13 +168,13 @@ async function rankingPNG(){
   ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
   const header=230+Math.min(names.length,2)*36;
   let nextY=header;
-  for(let i=0;i<rows.length;){
-    if(i<3){Object.assign(rows[i],{x:64,y:nextY,width:952});nextY+=rows[i].height;i++;}
-    else{
-      const pairHeight=Math.max(rows[i].height,rows[i+1]?.height||0);
-      for(let column=0;column<2&&i+column<rows.length;column++)Object.assign(rows[i+column],{x:64+column*486,y:nextY,width:466,height:pairHeight});
-      nextY+=pairHeight;i+=2;
-    }
+  for(const row of rows.slice(0,3)){Object.assign(row,{x:64,y:nextY,width:952});nextY+=row.height;}
+  const columnTop=nextY,leftCount=Math.ceil(Math.max(0,rows.length-3)/2);
+  for(let column=0;column<2;column++){
+    let columnY=columnTop;
+    const start=3+column*leftCount,end=column===0?3+leftCount:rows.length;
+    for(const row of rows.slice(start,end)){Object.assign(row,{x:64+column*486,y:columnY,width:466});columnY+=row.height;}
+    nextY=Math.max(nextY,columnY);
   }
   const height=nextY+130;
   const scale=Math.min(1,14000/height,Math.sqrt(14000000/(1080*height)));
@@ -239,6 +240,7 @@ app.addEventListener('click',async event=>{
     if(button.dataset.limit){preferredK=button.dataset.limit==='all'?Math.max(selection.size,1):Number(button.dataset.limit);persist();updateCatalog();return;}
     if(button.dataset.video){watchVideo(button.dataset.video);return;}
     if(button.dataset.rankPick){const id=button.dataset.rankPick,ids=activeNode(session).status==='sample'?activeNode(session).sample:activeNode(session).ids;if(!ids.includes(id))return;const index=draft.indexOf(id);if(index<0)draft.push(id);else draft.splice(index,1);render();document.querySelector(`[data-rank-pick="${CSS.escape(id)}"]`)?.focus({preventScroll:true});return;}
+    if(button.dataset.favoritePick){const node=activeNode(session),id=button.dataset.favoritePick;if(node?.status!=='manual'||node.ids.length!==2||!node.ids.includes(id))return;commit(rankSmall(session,[id,...node.ids.filter(other=>other!==id)]));return;}
     if(button.dataset.choice){commit(choose(session,button.dataset.choice==='opponent'));return;}
     switch(button.dataset.action){
       case 'select-visible': visibleSongs().forEach(s=>selection.add(s.id));persist();updateCatalog();break;
