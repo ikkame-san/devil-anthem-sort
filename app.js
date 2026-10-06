@@ -158,9 +158,24 @@ async function rankingPNG(){
   const data=resultData(),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('画像を作成できませんでした。別のブラウザをお試しください。');
   const font='system-ui, "Segoe UI", "Noto Sans JP", sans-serif';
-  const rows=data.songs.map((title,i)=>{ctx.font=`700 ${i<3?34:30}px ${font}`;const lines=wrapText(ctx,title,680);return {lines,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(i<3?138:114,lines.length*48+38)};});
+  const rows=data.songs.map((title,i)=>{
+    const topThree=i<3,lineHeight=topThree?48:36;
+    ctx.font=`700 ${topThree?34:26}px ${font}`;
+    const lines=wrapText(ctx,title,topThree?680:290);
+    return {lines,lineHeight,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(topThree?138:104,lines.length*lineHeight+(topThree?38:28))};
+  });
   ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
-  const header=230+Math.min(names.length,2)*36,height=header+rows.reduce((n,r)=>n+r.height,0)+130;
+  const header=230+Math.min(names.length,2)*36;
+  let nextY=header;
+  for(let i=0;i<rows.length;){
+    if(i<3){Object.assign(rows[i],{x:64,y:nextY,width:952});nextY+=rows[i].height;i++;}
+    else{
+      const pairHeight=Math.max(rows[i].height,rows[i+1]?.height||0);
+      for(let column=0;column<2&&i+column<rows.length;column++)Object.assign(rows[i+column],{x:64+column*486,y:nextY,width:466,height:pairHeight});
+      nextY+=pairHeight;i+=2;
+    }
+  }
+  const height=nextY+130;
   const scale=Math.min(1,14000/height,Math.sqrt(14000000/(1080*height)));
   canvas.width=Math.floor(1080*scale);canvas.height=Math.floor(height*scale);ctx.scale(scale,scale);
   ctx.fillStyle='#fbfaf6';ctx.fillRect(0,0,1080,height);
@@ -171,11 +186,10 @@ async function rankingPNG(){
   ctx.fillStyle='#d6dce7';ctx.font=`500 25px ${font}`;names.slice(0,2).forEach((line,i)=>ctx.fillText(line,64,196+i*36));
   ctx.strokeStyle='#c6a450';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(950+i*21,52);ctx.lineTo(980+i*21,82);ctx.stroke();}
   const metals=[{light:'#fff1bb',mid:'#d4aa3e',rim:'#b89534',ink:'#433213',row:'#f6e7b3'},{light:'#f7fafc',mid:'#aab5c3',rim:'#99a5b5',ink:'#303a47',row:'#dfe5ed'},{light:'#f4cba5',mid:'#ba855d',rim:'#ad7c52',ink:'#4d3020',row:'#ecd3bc'}];
-  let y=header;
   for(const [i,row] of rows.entries()){
-    const metal=metals[i];
-    const fill=ctx.createLinearGradient(64,y,1016,y);fill.addColorStop(0,metal?.row||'#ffffff');fill.addColorStop(1,metal?'#fffdfa':'#ffffff');
-    ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(64,y,952,row.height-10,10);ctx.fill();ctx.strokeStyle=metal?.rim||'#e2e5eb';ctx.lineWidth=1;ctx.stroke();
+    const metal=metals[i],{x,y,width}=row;
+    const fill=ctx.createLinearGradient(x,y,x+width,y);fill.addColorStop(0,metal?.row||'#ffffff');fill.addColorStop(1,metal?'#fffdfa':'#ffffff');
+    ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,y,width,row.height-10,10);ctx.fill();ctx.strokeStyle=metal?.rim||'#e2e5eb';ctx.lineWidth=1;ctx.stroke();
     const cy=y+(row.height-10)/2;
     if(metal){
       ctx.fillStyle=metal.rim;ctx.beginPath();ctx.moveTo(106,cy+24);ctx.lineTo(146,cy+24);ctx.lineTo(146,cy+53);ctx.lineTo(126,cy+41);ctx.lineTo(106,cy+53);ctx.closePath();ctx.fill();
@@ -183,13 +197,12 @@ async function rankingPNG(){
       ctx.fillStyle=shine;ctx.beginPath();ctx.arc(126,cy,37,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=metal.rim;ctx.stroke();
       ctx.beginPath();ctx.arc(126,cy,31,0,Math.PI*2);ctx.strokeStyle='#ffffff99';ctx.stroke();
     }
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=metal?.ink||'#5e6878';ctx.font=`700 ${metal?39:34}px ${font}`;ctx.fillText(String(i+1),126,cy);ctx.restore();
-    const jacketSize=i<3?100:80;
-    await drawRankingJacket(ctx,row.artwork,188,cy-jacketSize/2,jacketSize);
-    ctx.fillStyle='#172033';ctx.font=`700 ${i<3?34:30}px ${font}`;
-    const top=y+(row.height-10-row.lines.length*48)/2+37;
-    row.lines.forEach((line,j)=>ctx.fillText(line,316,top+j*48));
-    y+=row.height;
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=metal?.ink||'#5e6878';ctx.font=`700 ${metal?39:28}px ${font}`;ctx.fillText(String(i+1),metal?126:x+34,cy);ctx.restore();
+    const jacketSize=i<3?100:72;
+    await drawRankingJacket(ctx,row.artwork,metal?188:x+70,cy-jacketSize/2,jacketSize);
+    ctx.fillStyle='#172033';ctx.font=`700 ${i<3?34:26}px ${font}`;
+    const top=y+(row.height-10-row.lines.length*row.lineHeight)/2+(i<3?37:28);
+    row.lines.forEach((line,j)=>ctx.fillText(line,metal?316:x+158,top+j*row.lineHeight));
   }
   ctx.fillStyle='#5e6878';ctx.font=`500 20px ${font}`;ctx.fillText('非公式ファンサイト',64,height-65);ctx.textAlign='right';ctx.fillText(`${data.date.replaceAll('-','.')} ／ ${data.total}曲から`,1016,height-65);
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像を生成できませんでした。')),'image/png'));
