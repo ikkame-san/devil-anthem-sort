@@ -6,7 +6,7 @@ const STORAGE='devil-anthem-sort:v1';
 const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 let selection=new Set(), preferredK=10, custom=[], session=null, history=[], owner='', completedAt='', showUpcoming=false;
-let view='setup', search='', year='', tab='all', draft=[], draftKey='', draggedId='', shared=null, storageOK=true;
+let view='setup', search='', year='', tab='all', draft=[], draftKey='', shared=null, storageOK=true;
 let toastTimer;
 
 function allSongs(){return [...SONGS,...custom];}
@@ -49,14 +49,16 @@ function decodeResult(){
 function steps(current){return `<nav class="steps" aria-label="ランキング作成の手順">${['曲を選ぶ','好きな順に並べる','ランキング完成'].map((label,i)=>`<div class="step ${i===current?'active':i<current?'done':''}" ${i===current?'aria-current="step"':''}><span class="step-num">${i<current?'✓':`0${i+1}`}</span><span>${label}</span></div>`).join('')}</nav>`;}
 function focusMain(){app.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
 function visibleSongs(){return allSongs().filter(s=>(showUpcoming||s.date<=today()||s.custom)&&(!search||s.title.normalize('NFKC').toLowerCase().includes(search.normalize('NFKC').toLowerCase()))&&(!year||s.date.startsWith(year))&&(tab!=='selected'||selection.has(s.id)));}
-function tile(s){return `<label class="song-tile ${selection.has(s.id)?'selected':''}"><input type="checkbox" data-song="${escape(s.id)}" ${selection.has(s.id)?'checked':''} aria-label="${escape(s.title)}"><span class="song-info"><span class="song-title">${escape(s.title)}</span><span class="song-meta">${s.custom?'追加した曲':`${s.date.slice(0,4)} · ${escape(s.release)}${s.date>today()?' · 発売予定':''}`}</span></span></label>`;}
+function jacket(s,loading='lazy'){return `<span class="jacket" aria-hidden="true"><span class="cover-placeholder">♪</span>${s.artwork?`<img src="${escape(s.artwork)}" alt="" loading="${loading}" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;}
+function videoButton(s){return s.video?`<button type="button" class="video-link" data-video="${escape(s.id)}" aria-label="${escape(s.title)}の公式動画を見る">▶ ${escape(s.video.type)}</button>`:'';}
+function tile(s){return `<div class="song-item ${selection.has(s.id)?'selected':''}"><label class="song-tile ${selection.has(s.id)?'selected':''}"><input type="checkbox" data-song="${escape(s.id)}" ${selection.has(s.id)?'checked':''} aria-label="${escape(s.title)}">${jacket(s)}<span class="song-info"><span class="song-title">${escape(s.title)}</span><span class="song-meta">${s.custom?'追加した曲':`${s.date.slice(0,4)} · ${escape(s.release)}${s.date>today()?' · 発売予定':''}`}</span></span></label>${videoButton(s)}</div>`;}
 function selectedLimit(){return Math.min(preferredK,selection.size);}
 function setupHTML(){
   const available=allSongs().filter(s=>showUpcoming||s.date<=today()||s.custom).length;
   return `${session?`<div class="resume-banner"><div><strong>${activeNode(session)?'前回のソートが保存されています':'前回のランキングが保存されています'}</strong><p>${session.total}曲から 上位${session.limit}曲 ／ ${session.decisions}回の選択</p></div><button class="secondary" data-action="resume">${activeNode(session)?'続きから再開 ↗':'結果を見る ↗'}</button></div>`:''}
   
   ${steps(0)}<div class="setup-layout"><section aria-labelledby="select-heading"><div class="section-heading"><h2 id="select-heading">ランキングに入れたい曲を選ぶ</h2></div><div class="search-row"><div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg><input id="search" type="search" placeholder="曲名で検索" aria-label="曲名で検索" value="${escape(search)}"></div><select id="year" aria-label="発売年で絞り込み"><option value="">すべての年代</option>${[...new Set(SONGS.map(s=>s.date.slice(0,4)))].sort().reverse().map(y=>`<option ${year===y?'selected':''}>${y}</option>`).join('')}</select></div><div class="catalog-toolbar"><div class="tabs" role="group" aria-label="曲リストの表示"><button class="tab ${tab==='all'?'active':''}" data-tab="all" aria-pressed="${tab==='all'}">すべて <span id="available-count">${available}</span></button><button class="tab ${tab==='selected'?'active':''}" data-tab="selected" aria-pressed="${tab==='selected'}">選択中 <span id="tab-count">${selection.size}</span></button></div><div class="catalog-actions"><button class="text-button" data-action="select-visible">表示中をすべて選択</button><button class="text-button" data-action="clear">選択解除</button></div></div><div id="song-grid" class="song-grid" role="group" aria-label="ランキング対象の曲"></div><label class="check-label"><input id="upcoming" type="checkbox" ${showUpcoming?'checked':''}>発売予定の曲も表示する</label><p class="catalog-note">再録音源は同じ曲としてまとめています。リミックスは別曲として掲載。<br><a href="https://devilanthem.net/#/discography/" target="_blank" rel="noopener noreferrer">公式ディスコグラフィー ↗</a> をもとに収録 ／ 更新 ${CATALOG_DATE.replaceAll('-','.')}</p><details class="custom-songs"><summary>見つからない曲を追加する ＋</summary><form id="custom-form" class="custom-entry"><input id="custom-title" maxlength="180" placeholder="追加したい曲名" aria-label="追加したい曲名" required><button type="submit">追加 ＋</button></form><p class="catalog-note">追加した曲はこのブラウザに保存され、ランキング画像・共有リンクにも表示されます。</p></details></section>
-  <aside><div class="settings" id="sort-settings"><h2>ランキング設定</h2><div class="selected-count"><strong id="selection-count">${String(selection.size)}</strong><span>曲 / <span id="selection-total">${available}</span></span></div><p class="selection-label">選んだ曲だけでランキングを作ります</p><div class="settings-divider"></div><label class="settings-label" for="rank-limit">何位まで作るか</label><div class="rank-number"><input id="rank-limit" type="number" min="1" max="${Math.max(selection.size,1)}" value="${selection.size?selectedLimit():preferredK}" inputmode="numeric"><span>位まで</span></div><div class="presets"><button class="preset" data-limit="10">上位10曲</button><button class="preset" data-limit="20">上位20曲</button><button class="preset" data-limit="all">全曲</button></div><p class="small-note" id="limit-note">${selection.size?`${selection.size}曲の中から、上位${selectedLimit()}曲を決めます。`:'ランキング対象の曲を選んでください。'}</p><button class="primary start-button" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button><p class="small-note center">途中で閉じても、続きから再開できます。</p></div><details class="how-it-works"><summary>ソートの進め方</summary><ol><li>3曲を好きな順に並べ、2位を比較の基準にする。</li><li>2曲のうち、より好きなほうを選ぶ。</li><li>4曲以下になったら、直接並べ替え。</li><li>完成したランキングを画像で保存・共有。</li></ol></details></aside></div><div class="mobile-start"><div><p id="mobile-selection">選択中 ${selection.size}曲 / 上位${selectedLimit()}曲</p><button class="text-button" data-action="settings">ランキング設定</button></div><button class="primary" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button></div>`;
+  <aside><div class="settings" id="sort-settings"><h2>ランキング設定</h2><div class="selected-count"><strong id="selection-count">${String(selection.size)}</strong><span>曲 / <span id="selection-total">${available}</span></span></div><p class="selection-label">選んだ曲だけでランキングを作ります</p><div class="settings-divider"></div><label class="settings-label" for="rank-limit">何位まで作るか</label><div class="rank-number"><input id="rank-limit" type="number" min="1" max="${Math.max(selection.size,1)}" value="${selection.size?selectedLimit():preferredK}" inputmode="numeric"><span>位まで</span></div><div class="presets"><button class="preset" data-limit="10">上位10曲</button><button class="preset" data-limit="20">上位20曲</button><button class="preset" data-limit="all">全曲</button></div><p class="small-note" id="limit-note">${selection.size?`${selection.size}曲の中から、上位${selectedLimit()}曲を決めます。`:'ランキング対象の曲を選んでください。'}</p><button class="primary start-button" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button><p class="small-note center">途中で閉じても、続きから再開できます。</p></div></aside></div><div class="mobile-start"><div><p id="mobile-selection">選択中 ${selection.size}曲 / 上位${selectedLimit()}曲</p><button class="text-button" data-action="settings">ランキング設定</button></div><button class="primary" data-action="start" ${!selection.size?'disabled':''}>ソートを始める</button></div>`;
 }
 function updateCatalog(){
   const grid=document.querySelector('#song-grid');
@@ -76,16 +78,18 @@ function updateCatalog(){
   document.querySelector('#mobile-selection').textContent=`選択中 ${selection.size}曲 / 上位${selectedLimit()}曲`; 
 }
 function keyFor(node){return `${node.offset}:${node.status}:${node.ids.join(',')}`;}
-function ensureDraft(node){const key=keyFor(node);if (key!==draftKey){draftKey=key;draft=[...(node.status==='sample'?node.sample:node.ids)];}}
+function ensureDraft(node){const key=keyFor(node);if(key!==draftKey){draftKey=key;draft=[];}}
 function editor(node){
   ensureDraft(node);
-  const sample=node.status==='sample';
-  return `<div class="sort-heading"><h2>${sample?'この3曲を、好きな順に。':`残り${node.ids.length}曲を、好きな順に。`}</h2><p>${sample?'いちばん好きな曲を上へ。2位の曲が次の比較の基準になります。':'このブロックの順位を直接決めます。いちばん好きな曲を上にしてください。'}</p></div><div class="rank-editor"><div id="rank-rows">${draft.map((id,i)=>`<div class="rank-row ${sample&&i===1?'pivot-row':''}" draggable="true" data-drag-id="${escape(id)}"><span class="rank-position">${i+1}</span><span><span class="song-title">${escape(song(id).title)}${sample&&i===1?'<span class="pivot-tag">比較の基準</span>':''}</span><span class="song-meta">${sample?['最初から「基準より好き」に入ります','この曲を右側に固定して比較します','最初から「基準より下」に入ります'][i]:`${node.offset+i+1}位の候補`}</span></span><span class="order-controls"><button data-move="up" data-id="${escape(id)}" aria-label="${escape(song(id).title)}を上へ" ${i===0?'disabled':''}>↑</button><button data-move="down" data-id="${escape(id)}" aria-label="${escape(song(id).title)}を下へ" ${i===draft.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div><div class="rank-editor-footer"><span class="drag-hint">↑↓ボタン、またはドラッグで並べ替え</span><button class="primary" data-action="confirm-order">${sample?'この順番で比較を始める':'この順位で確定する'} <span aria-hidden="true">↗</span></button></div></div>`;
+  const ids=node.status==='sample'?node.sample:node.ids;
+  const complete=draft.length===ids.length;
+  return `<div class="sort-heading"><h2>好きな順にタップしてください</h2><p id="rank-instruction" aria-live="polite">${complete?'選んだ順番で順位を確定します。':`${draft.length+1}番目に好きな曲を選んでください。`}</p></div><div class="rank-editor"><div class="tap-options">${ids.map(id=>{const item=song(id),rank=draft.indexOf(id)+1;return `<div class="rank-option"><button class="rank-pick ${rank?'picked':''}" data-rank-pick="${escape(id)}" aria-pressed="${!!rank}" aria-label="${escape(item.title)}${rank?`、${rank}位、タップして選択解除`:'、順位を選ぶ'}"><span class="pick-number">${rank||'—'}</span>${jacket(item,'eager')}<span class="song-info"><span class="song-title">${escape(item.title)}</span><span class="song-meta">${escape(item.release)}</span></span></button>${videoButton(item)}</div>`;}).join('')}</div><div class="rank-editor-footer"><button class="secondary" data-action="reset-order" ${draft.length?'':'disabled'}>選び直す</button><button class="primary" data-action="confirm-order" ${complete?'':'disabled'}>この順番で確定する</button></div><p class="small-note rank-help">選んだ曲をもう一度タップすると、その曲の選択を取り消せます。</p></div>`;
 }
 function chip(id){return `<span class="song-chip">${escape(song(id).title)}</span>`;}
 function compareHTML(node){
   const opponent=song(node.queue[node.cursor]),pivot=song(node.pivot);
-  return `<div class="sort-heading"><h2>好きな曲を選んでください</h2><p>好きなほうのカードをタップ。右側の曲は、このブロックの間ずっと同じです。</p></div><div class="comparison"><button class="compare-card" data-choice="opponent"><span class="eyebrow">比較する曲</span><span><span class="compare-title" style="display:block">${escape(opponent.title)}</span><span class="song-meta">${escape(opponent.release)}</span></span><span class="compare-footer">こちらを選ぶ <span class="key-hint">← キー</span></span></button><span class="versus" aria-hidden="true">比較</span><button class="compare-card pivot" data-choice="pivot"><span class="eyebrow">比較の基準（固定）</span><span><span class="compare-title" style="display:block">${escape(pivot.title)}</span><span class="song-meta">${escape(pivot.release)}</span></span><span class="compare-footer">こちらを選ぶ <span class="key-hint">→ キー</span></span></button></div><section class="partition-board" aria-label="比較済みの曲"><div class="partition-heading"><h3>このブロックの振り分け</h3><span>比較 ${node.cursor} / ${node.queue.length}</span></div><div class="partition-columns"><div class="partition-list"><div class="partition-label"><span>← 基準より好き</span><span>${node.high.length}曲</span></div><div class="partition-items">${node.high.map(chip).join('')}</div></div><div class="pivot-marker"><span class="eyebrow">比較の基準</span><strong>${escape(pivot.title)}</strong></div><div class="partition-list low"><div class="partition-label"><span>基準より下 →</span><span>${node.low.length}曲</span></div><div class="partition-items">${node.low.map(chip).join('')}</div></div></div><p class="catalog-note">3曲の順位付けで決めた1位と3位は、すでに左右のリストに入っています。リスト内の順位は、あとで決めます。</p></section>`;
+  const card=(item,choice)=>`<div class="compare-option"><button class="compare-card ${choice==='pivot'?'pivot':''}" data-choice="${choice}"><span class="eyebrow">${choice==='pivot'?'比較の基準（固定）':'比較する曲'}</span>${jacket(item,'eager')}<span class="compare-title">${escape(item.title)}</span><span class="compare-footer">こちらが好き <span class="key-hint">${choice==='pivot'?'→':'←'} キー</span></span></button>${videoButton(item)}</div>`;
+  return `<div class="sort-heading"><h2>どちらの曲が好きですか？</h2><p>好きなほうをタップしてください。</p></div><div class="comparison">${card(opponent,'opponent')}<span class="versus" aria-hidden="true">比較</span>${card(pivot,'pivot')}</div><section class="partition-board" aria-label="比較済みの曲"><div class="partition-heading"><h3>比較済みの曲</h3><span>${node.cursor} / ${node.queue.length}</span></div><div class="partition-columns"><div class="partition-list"><div class="partition-label"><span>← この曲より好き</span><span>${node.high.length}曲</span></div><div class="partition-items">${node.high.map(chip).join('')}</div></div><div class="pivot-marker"><strong>${escape(pivot.title)}</strong></div><div class="partition-list low"><div class="partition-label"><span>この曲より下 →</span><span>${node.low.length}曲</span></div><div class="partition-items">${node.low.map(chip).join('')}</div></div></div></section>`;
 }
 function sortHTML(){
   const node=activeNode(session);
@@ -95,14 +99,14 @@ function sortHTML(){
 function resultData(){return shared||{v:1,songs:rankedIds(session).map(id=>song(id).title),owner,date:completedAt||today(),total:session.total};}
 function resultHTML(){
   const data=resultData();
-  return `${steps(2)}<div class="results-hero"><h1>${shared?'共有されたランキング':'ランキング完成'}</h1><p>${data.total}曲から、上位${data.songs.length}曲</p></div>${shared?'<p class="result-readonly-note">共有されたランキングです。自分のソートの途中保存も、そのまま残っています。</p>':''}<div class="result-layout"><section class="ranking-poster" aria-label="完成したランキング"><div class="poster-head"><h2>Devil ANTHEM.楽曲ソート</h2><p class="small-note">上位${data.songs.length}曲</p><p class="owner" id="poster-owner">${escape(data.owner||'')}</p></div><ol class="result-ranking">${data.songs.map((title,i)=>`<li><span class="rank-position">${String(i+1)}</span><span class="song-title">${escape(title)}</span></li>`).join('')}</ol><div class="poster-footer"><span>非公式ファンサイト</span><span>${data.date.replaceAll('-','.')} ／ ${data.total}曲から</span></div></section><aside class="result-actions"><h3>保存・共有</h3>${shared?'':`<label for="owner">画像に入れる名前（任意）</label><input id="owner" maxlength="50" placeholder="あなたの名前 / ニックネーム" value="${escape(owner)}">`}<button class="primary" data-action="save-image">画像を保存する ↓</button><button class="secondary" data-action="share-image">画像を共有する ↗</button><button class="secondary" data-action="copy-link">結果リンクをコピー</button><button class="text-button" data-action="copy-text">ランキングのテキストをコピー</button><a class="x-share" id="x-share" href="${escape(xURL())}" target="_blank" rel="noopener noreferrer">Xでランキングをシェア ↗</a><p class="small-note">画像はPNGで保存できます。画像共有は対応ブラウザで使えます。共有先でも同じランキングが見られる結果リンク付き。</p><div class="settings-divider"></div>${!shared&&history.length?'<button class="text-button" data-action="undo">↶ 最後の選択をやり直す</button>':''}<button class="secondary" data-action="to-setup">${shared?'自分のランキングを作る':'曲を選び直す'}</button></aside></div>`;
+  return `${steps(2)}<div class="results-hero"><h1>${shared?'共有されたランキング':'ランキング完成'}</h1><p>${data.total}曲から、上位${data.songs.length}曲</p></div>${shared?'<p class="result-readonly-note">共有されたランキングです。自分のソートの途中保存も、そのまま残っています。</p>':''}<div class="result-layout"><section class="ranking-poster" aria-label="完成したランキング"><div class="poster-head"><h2>Devil ANTHEM.楽曲ソート</h2><p class="small-note">上位${data.songs.length}曲</p><p class="owner" id="poster-owner">${escape(data.owner||'')}</p></div><ol class="result-ranking">${data.songs.map((title,i)=>`<li class="${i<3?`podium podium-${i+1}`:''}"><span class="rank-position ${i<3?`medal medal-${i+1}`:''}">${i+1}</span>${jacket(allSongs().find(s=>s.title===title)||{})}<span class="song-info"><span class="song-title">${escape(title)}</span>${videoButton(allSongs().find(s=>s.title===title)||{})}</span></li>`).join('')}</ol><div class="poster-footer"><span>非公式ファンサイト</span><span>${data.date.replaceAll('-','.')} ／ ${data.total}曲から</span></div></section><aside class="result-actions"><h3>保存・共有</h3>${shared?'':`<label for="owner">画像に入れる名前（任意）</label><input id="owner" maxlength="50" placeholder="あなたの名前 / ニックネーム" value="${escape(owner)}">`}<button class="primary" data-action="save-image">画像を保存する ↓</button><button class="secondary" data-action="share-image">画像を共有する ↗</button><button class="secondary" data-action="copy-link">結果リンクをコピー</button><button class="text-button" data-action="copy-text">ランキングのテキストをコピー</button><a class="x-share" id="x-share" href="${escape(xURL())}" target="_blank" rel="noopener noreferrer">Xでランキングをシェア ↗</a><p class="small-note">画像はPNGで保存できます。画像共有は対応ブラウザで使えます。共有先でも同じランキングが見られる結果リンク付き。</p><div class="settings-divider"></div>${!shared&&history.length?'<button class="text-button" data-action="undo">↶ 最後の選択をやり直す</button>':''}<button class="secondary" data-action="to-setup">${shared?'自分のランキングを作る':'曲を選び直す'}</button></aside></div>`;
 }
 function render(){
   if (view==='sort'&&!activeNode(session)) {view='result';if (!completedAt) {completedAt=today();persist();}}
   app.innerHTML=view==='setup'?setupHTML():view==='sort'?sortHTML():resultHTML();
   if (view==='setup') updateCatalog();
 }
-function commit(next){history.push(structuredClone(session));history=history.slice(-30);session=next;draftKey='';completedAt='';persist();render();}
+function commit(next){const before=activeNode(session),after=activeNode(next);history.push(structuredClone(session));history=history.slice(-30);session=next;draftKey='';completedAt='';persist();render();if(!after||keyFor(before)!==keyFor(after))focusMain();}
 async function confirmRestart(){const dialog=document.querySelector('#confirm-dialog');return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='confirm'),{once:true});dialog.showModal();});}
 function shareURL(){
   const bytes=new TextEncoder().encode(JSON.stringify(resultData()));
@@ -121,35 +125,42 @@ async function copyText(text){
 }
 function wrapText(ctx,text,maxWidth){const lines=[];let line='';for(const char of Array.from(text)){if(line&&ctx.measureText(line+char).width>maxWidth){lines.push(line);line=char;}else line+=char;}if(line)lines.push(line);return lines;}
 async function rankingPNG(){
-  if (document.fonts?.ready) await document.fonts.ready;
+  if(document.fonts?.ready)await document.fonts.ready;
   const data=resultData(),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
-  if (!ctx) throw new Error('画像を作成できませんでした。別のブラウザをお試しください。');
-  const bodyFont='system-ui, "Segoe UI", "Noto Sans JP", sans-serif';
-  ctx.font=`700 30px ${bodyFont}`;
-  const rows=data.songs.map((title,i)=>{ctx.font=`700 ${i===0?38:30}px ${bodyFont}`;const lines=wrapText(ctx,title,i===0?758:814);return {lines,height:Math.max(i===0?114:82,lines.length*(i===0?55:46)+36)};});
-  const ownerLines=wrapText(ctx,data.owner,890);
-  const headerHeight=230+Math.min(ownerLines.length,2)*38;
-  const height=headerHeight+rows.reduce((sum,row)=>sum+row.height,0)+120;
-  // Keep even large custom rankings within common mobile canvas limits.
+  if(!ctx)throw new Error('画像を作成できませんでした。別のブラウザをお試しください。');
+  const font='system-ui, "Segoe UI", "Noto Sans JP", sans-serif';
+  const rows=data.songs.map((title,i)=>{ctx.font=`700 ${i<3?34:30}px ${font}`;const lines=wrapText(ctx,title,770);return {lines,height:Math.max(i<3?122:90,lines.length*48+38)};});
+  ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
+  const header=230+Math.min(names.length,2)*36,height=header+rows.reduce((n,r)=>n+r.height,0)+130;
   const scale=Math.min(1,14000/height,Math.sqrt(14000000/(1080*height)));
   canvas.width=Math.floor(1080*scale);canvas.height=Math.floor(height*scale);ctx.scale(scale,scale);
-  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1080,height);
-  ctx.fillStyle='#172033';ctx.font=`700 48px ${bodyFont}`;ctx.fillText('Devil ANTHEM.楽曲ソート',64,96);
-  ctx.fillStyle='#5e6878';ctx.font=`500 28px ${bodyFont}`;ctx.fillText(`上位${data.songs.length}曲`,64,152);
-  ctx.font=`500 25px ${bodyFont}`;ownerLines.slice(0,2).forEach((line,i)=>ctx.fillText(line,64,198+i*38));
-  ctx.strokeStyle='#d9dee7';ctx.beginPath();ctx.moveTo(64,headerHeight-26);ctx.lineTo(1016,headerHeight-26);ctx.stroke();
-  let y=headerHeight;
+  ctx.fillStyle='#fbfaf6';ctx.fillRect(0,0,1080,height);
+  ctx.fillStyle='#172033';ctx.fillRect(0,0,1080,header-20);
+  ctx.strokeStyle='#c6a450';ctx.lineWidth=3;ctx.strokeRect(24,24,1032,height-48);
+  ctx.fillStyle='#ffffff';ctx.font=`700 44px ${font}`;ctx.fillText('Devil ANTHEM.楽曲ソート',64,96);
+  ctx.fillStyle='#ead598';ctx.font=`600 28px ${font}`;ctx.fillText(`上位${data.songs.length}曲`,64,151);
+  ctx.fillStyle='#d6dce7';ctx.font=`500 25px ${font}`;names.slice(0,2).forEach((line,i)=>ctx.fillText(line,64,196+i*36));
+  ctx.strokeStyle='#c6a450';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(950+i*21,52);ctx.lineTo(980+i*21,82);ctx.stroke();}
+  const metals=[{light:'#fff1bb',mid:'#d4aa3e',rim:'#b89534',ink:'#433213',row:'#f6e7b3'},{light:'#f7fafc',mid:'#aab5c3',rim:'#99a5b5',ink:'#303a47',row:'#dfe5ed'},{light:'#f4cba5',mid:'#ba855d',rim:'#ad7c52',ink:'#4d3020',row:'#ecd3bc'}];
+  let y=header;
   rows.forEach((row,i)=>{
-    if(i===0){ctx.fillStyle='#eff6ff';ctx.fillRect(64,y,952,row.height-8);}
-    ctx.fillStyle=i===0?'#2563eb':'#5e6878';ctx.font=`700 ${i===0?56:40}px ${bodyFont}`;ctx.fillText(String(i+1),i===0?90:77,y+row.height/2+15);
-    ctx.fillStyle='#172033';ctx.font=`700 ${i===0?38:30}px ${bodyFont}`;
-    const lineHeight=i===0?55:46, start=y+(row.height-row.lines.length*lineHeight)/2+lineHeight*.77;
-    row.lines.forEach((line,j)=>ctx.fillText(line,i===0?208:194,start+j*lineHeight));
-    if(i!==0){ctx.strokeStyle='#d9dee7';ctx.beginPath();ctx.moveTo(64,y+row.height);ctx.lineTo(1016,y+row.height);ctx.stroke();}
+    const metal=metals[i];
+    const fill=ctx.createLinearGradient(64,y,1016,y);fill.addColorStop(0,metal?.row||'#ffffff');fill.addColorStop(1,metal?'#fffdfa':'#ffffff');
+    ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(64,y,952,row.height-10,10);ctx.fill();ctx.strokeStyle=metal?.rim||'#e2e5eb';ctx.lineWidth=1;ctx.stroke();
+    const cy=y+(row.height-10)/2;
+    if(metal){
+      ctx.fillStyle=metal.rim;ctx.beginPath();ctx.moveTo(106,cy+24);ctx.lineTo(146,cy+24);ctx.lineTo(146,cy+53);ctx.lineTo(126,cy+41);ctx.lineTo(106,cy+53);ctx.closePath();ctx.fill();
+      const shine=ctx.createLinearGradient(91,cy-35,161,cy+35);shine.addColorStop(0,metal.light);shine.addColorStop(.55,metal.mid);shine.addColorStop(1,metal.light);
+      ctx.fillStyle=shine;ctx.beginPath();ctx.arc(126,cy,37,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=metal.rim;ctx.stroke();
+      ctx.beginPath();ctx.arc(126,cy,31,0,Math.PI*2);ctx.strokeStyle='#ffffff99';ctx.stroke();
+    }
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=metal?.ink||'#5e6878';ctx.font=`700 ${metal?39:34}px ${font}`;ctx.fillText(String(i+1),126,cy);ctx.restore();
+    ctx.fillStyle='#172033';ctx.font=`700 ${i<3?34:30}px ${font}`;
+    const top=y+(row.height-10-row.lines.length*48)/2+37;
+    row.lines.forEach((line,j)=>ctx.fillText(line,210,top+j*48));
     y+=row.height;
   });
-  ctx.fillStyle='#5e6878';ctx.font=`500 20px ${bodyFont}`;ctx.fillText('非公式ファンサイト',64,height-51);
-  ctx.textAlign='right';ctx.fillText(`${data.date.replaceAll('-','.')} ／ ${data.total}曲から`,1016,height-51);
+  ctx.fillStyle='#5e6878';ctx.font=`500 20px ${font}`;ctx.fillText('非公式ファンサイト',64,height-65);ctx.textAlign='right';ctx.fillText(`${data.date.replaceAll('-','.')} ／ ${data.total}曲から`,1016,height-65);
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像を生成できませんでした。')),'image/png'));
 }
 async function saveImage(){const blob=await rankingPNG();const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`devil-anthem-top${resultData().songs.length}-${resultData().date}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('ランキング画像を保存しました。');}
@@ -182,7 +193,8 @@ app.addEventListener('click',async event=>{
   try {
     if(button.dataset.tab){tab=button.dataset.tab;render();return;}
     if(button.dataset.limit){preferredK=button.dataset.limit==='all'?Math.max(selection.size,1):Number(button.dataset.limit);persist();updateCatalog();return;}
-    if(button.dataset.move){const index=draft.indexOf(button.dataset.id),destination=index+(button.dataset.move==='up'?-1:1);if(destination>=0&&destination<draft.length){[draft[index],draft[destination]]=[draft[destination],draft[index]];render();document.querySelector(`[data-move="${button.dataset.move}"][data-id="${CSS.escape(button.dataset.id)}"]`)?.focus({preventScroll:true});}return;}
+    if(button.dataset.video){watchVideo(button.dataset.video);return;}
+    if(button.dataset.rankPick){const id=button.dataset.rankPick,ids=activeNode(session).status==='sample'?activeNode(session).sample:activeNode(session).ids;if(!ids.includes(id))return;const index=draft.indexOf(id);if(index<0)draft.push(id);else draft.splice(index,1);render();document.querySelector(`[data-rank-pick="${CSS.escape(id)}"]`)?.focus({preventScroll:true});return;}
     if(button.dataset.choice){commit(choose(session,button.dataset.choice==='opponent'));return;}
     switch(button.dataset.action){
       case 'select-visible': visibleSongs().forEach(s=>selection.add(s.id));persist();updateCatalog();break;
@@ -194,7 +206,8 @@ app.addEventListener('click',async event=>{
         if(selection.size>300){toast('一度にソートできるのは300曲までです。');return;}
         if(session&&!(await confirmRestart()))return;
         session=createSession([...selection],selectedLimit());history=[];completedAt='';shared=null;draftKey='';view='sort';persist();render();focusMain();break;
-      case 'confirm-order':commit(activeNode(session).status==='sample'?rankSample(session,draft):rankSmall(session,draft));break;
+      case 'reset-order':draft=[];render();break;
+      case 'confirm-order':{const node=activeNode(session),ids=node.status==='sample'?node.sample:node.ids;if(draft.length===ids.length)commit(node.status==='sample'?rankSample(session,draft):rankSmall(session,draft));break;}
       case 'undo':if(history.length){session=history.pop();shared=null;completedAt='';draftKey='';view='sort';persist();render();}break;
       case 'pause':view='setup';render();focusMain();break;
       case 'to-setup':shared=null;window.history.replaceState(null,'',location.pathname+location.search);view='setup';render();focusMain();break;
@@ -210,10 +223,18 @@ app.addEventListener('click',async event=>{
     }
   } catch(error){button.disabled=false;if(error.name!=='AbortError')toast(error.message||'操作に失敗しました。もう一度お試しください。');}
 });
-app.addEventListener('dragstart',event=>{const row=event.target.closest('[data-drag-id]');if(!row)return;draggedId=row.dataset.dragId;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',draggedId);row.classList.add('dragging');});
-app.addEventListener('dragover',event=>{if(draggedId&&event.target.closest('[data-drag-id]')){event.preventDefault();event.dataTransfer.dropEffect='move';}});
-app.addEventListener('drop',event=>{const row=event.target.closest('[data-drag-id]');if(!row||!draggedId)return;event.preventDefault();const from=draft.indexOf(draggedId),to=draft.indexOf(row.dataset.dragId);if(from>=0&&to>=0){draft.splice(to,0,draft.splice(from,1)[0]);render();}draggedId='';});
-app.addEventListener('dragend',()=>{draggedId='';document.querySelector('.dragging')?.classList.remove('dragging');});
 document.addEventListener('keydown',event=>{if(view!=='sort'||activeNode(session)?.status!=='compare'||document.querySelector('dialog[open]')||['INPUT','SELECT','TEXTAREA','BUTTON','A'].includes(event.target.tagName)||event.repeat)return;if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();commit(choose(session,event.key==='ArrowLeft'));}});
 window.addEventListener('hashchange',()=>{shared=null;decodeResult();if(!shared)view='setup';render();focusMain();});
+function watchVideo(id){
+  const item=song(id);if(!item.video)return;
+  const dialog=document.querySelector('#video-dialog');
+  document.querySelector('#video-title').textContent=item.title;
+  document.querySelector('#youtube-link').href=`https://www.youtube.com/watch?v=${item.video.id}`;
+  document.querySelector('#video-container').innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${item.video.id}?rel=0&playsinline=1" title="${escape(item.title)}の公式動画" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+  dialog.showModal();
+}
+document.querySelector('#close-video').addEventListener('click',()=>document.querySelector('#video-dialog').close());
+document.querySelector('#video-dialog').addEventListener('close',()=>document.querySelector('#video-container').replaceChildren());
+document.addEventListener('error',event=>{if(event.target.matches?.('.jacket img'))event.target.hidden=true;},true);
+
 load();decodeResult();render();
