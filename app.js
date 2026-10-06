@@ -1,5 +1,6 @@
 import {SONGS,CATALOG_DATE} from './songs.js';
 import {createSession,activeNode,rankSample,choose,rankSmall,rankedIds,resolvedCount} from './engine.js';
+import {createJacketCache} from './jackets.js';
 
 const app=document.querySelector('#app');
 const STORAGE='devil-anthem-sort:v1';
@@ -8,6 +9,7 @@ const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'num
 let selection=new Set(), preferredK=15, custom=[], session=null, history=[], owner='', completedAt='', showUpcoming=false;
 let view='setup', search='', year='', tab='all', draft=[], draftKey='', shared=null, storageOK=true;
 let toastTimer;
+const rankingJackets=createJacketCache();
 
 function allSongs(){return [...SONGS,...custom];}
 function song(id){return allSongs().find(s=>s.id===id)||{id,title:'不明な曲',release:'',date:''};}
@@ -109,6 +111,7 @@ function render(){
   if (view==='sort'&&!activeNode(session)) {view='result';if (!completedAt) {completedAt=today();persist();}}
   app.innerHTML=view==='setup'?setupHTML():view==='sort'?sortHTML():resultHTML();
   if (view==='setup') updateCatalog();
+  if (view==='result') rankingJackets.prepare(resultData().songs.map(title=>allSongs().find(s=>s.title===title)?.artwork)).catch(()=>{});
 }
 function commit(next){const before=activeNode(session),after=activeNode(next);history.push(structuredClone(session));history=history.slice(-30);session=next;draftKey='';completedAt='';persist();render();if(!after||keyFor(before)!==keyFor(after))focusMain();}
 async function confirmRestart(){const dialog=document.querySelector('#confirm-dialog');return new Promise(resolve=>{dialog.addEventListener('close',()=>resolve(dialog.returnValue==='confirm'),{once:true});dialog.showModal();});}
@@ -132,18 +135,7 @@ async function drawRankingJacket(ctx,artwork,x,y,size){
   ctx.save();ctx.beginPath();ctx.roundRect(x,y,size,size,6);ctx.clip();
   try{
     if(artwork){
-      const name=new URL(artwork).pathname.split('/').pop();
-      if(!/^[a-z0-9]+\.(jpg|png)$/.test(name))throw new Error('Invalid jacket');
-      const response=await fetch(`./jackets/${name}`,{signal:AbortSignal.timeout(15000)});
-      if(!response.ok)throw new Error('Jacket unavailable');
-      const blob=await response.blob();
-      if(typeof createImageBitmap==='function'){
-        const bitmap=await createImageBitmap(blob,{resizeWidth:256,resizeHeight:256,resizeQuality:'high'});
-        try{ctx.drawImage(bitmap,x,y,size,size);}finally{bitmap.close();}
-      }else{
-        const url=URL.createObjectURL(blob),image=new Image();
-        try{image.src=url;await image.decode();ctx.drawImage(image,x,y,size,size);}finally{URL.revokeObjectURL(url);}
-      }
+      ctx.drawImage(await rankingJackets.get(artwork),x,y,size,size);
     }else{
       ctx.fillStyle='#e8ecf2';ctx.fillRect(x,y,size,size);ctx.fillStyle='#8491a4';
       ctx.font=`500 ${size/2}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('♪',x+size/2,y+size/2);
@@ -167,6 +159,7 @@ async function rankingPNG(){
     const lines=wrapText(ctx,title,topThree?680:columnWidth-lower.textInset-18);
     return {lines,lineHeight,fontSize,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(topThree?138:lower.minHeight,lines.length*lineHeight+(topThree?38:28))};
   });
+  try{await rankingJackets.prepare(rows.map(row=>row.artwork));}catch{throw new Error('ジャケット画像を読み込めませんでした。通信状態を確認して、もう一度お試しください。');}
   ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
   const header=160+Math.min(names.length,2)*36;
   let nextY=header;
@@ -214,7 +207,7 @@ async function rankingPNG(){
   ctx.fillStyle='#5e6878';ctx.font=`500 20px ${font}`;ctx.textAlign='right';ctx.fillText(`${data.date.replaceAll('-','.')} ／ ${data.total}曲から`,1016,height-65);
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像を生成できませんでした。')),'image/png'));
 }
-async function saveImage(){const blob=await rankingPNG();const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`devil-anthem-top${resultData().songs.length}-${resultData().date}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('ランキング画像を保存しました。');}
+async function saveImage(){const data=resultData(),blob=await rankingPNG();const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`devil-anthem-top${data.songs.length}-${data.date}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('ランキング画像を保存しました。');}
 
 app.addEventListener('input',event=>{
   const target=event.target;
@@ -269,14 +262,20 @@ app.addEventListener('click',async event=>{
       case 'undo':if(history.length){session=history.pop();shared=null;completedAt='';draftKey='';view='sort';persist();render();}break;
       case 'pause':view='setup';render();focusMain();break;
       case 'to-setup':shared=null;window.history.replaceState(null,'',location.pathname+location.search);view='setup';render();focusMain();break;
-      case 'save-image':button.disabled=true;await saveImage();button.disabled=false;break;
+      case 'save-image':{
+        button.disabled=true;button.textContent='画像を作成中…';
+        try{await saveImage();}finally{button.disabled=false;button.textContent='画像を保存する ↓';}
+        break;
+      }
       case 'copy-link':await copyText(shareURL());toast('結果リンクをコピーしました。');break;
       case 'copy-text':await copyText(`${rankingText()}\n${shareURL()}`);toast('ランキングのテキストをコピーしました。');break;
       case 'share-image':{
-        button.disabled=true;const blob=await rankingPNG(),file=new File([blob],`devil-anthem-ranking.png`,{type:'image/png'});
+        button.disabled=true;button.textContent='画像を作成中…';
+        try{
+        const blob=await rankingPNG(),file=new File([blob],`devil-anthem-ranking.png`,{type:'image/png'});
         if(navigator.canShare?.({files:[file]})&&navigator.share){await navigator.share({files:[file],title:'Devil ANTHEM.楽曲ソート',text:rankingText(),url:shareURL()});}
         else {await copyText(shareURL());toast('結果リンクをコピーしました。画像は「画像を保存する」から保存できます。');}
-        button.disabled=false;break;
+        }finally{button.disabled=false;button.textContent='画像を共有する ↗';}break;
       }
     }
   } catch(error){button.disabled=false;if(error.name!=='AbortError')toast(error.message||'操作に失敗しました。もう一度お試しください。');}
