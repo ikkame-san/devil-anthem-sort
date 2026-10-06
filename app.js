@@ -129,12 +129,36 @@ async function copyText(text){
   if(!copied){const existing=document.querySelector('#manual-copy');if(existing)existing.remove();const fallback=document.createElement('textarea');fallback.id='manual-copy';fallback.value=text;fallback.readOnly=true;fallback.setAttribute('aria-label','手動でコピーするテキスト');fallback.style.cssText='width:100%;height:90px;margin-top:12px;font:inherit;font-size:11px;';document.querySelector('.result-actions').append(fallback);fallback.focus();fallback.select();throw new Error('コピーできませんでした。表示されたテキストを選んでコピーしてください。');}
 }
 function wrapText(ctx,text,maxWidth){const lines=[];let line='';for(const char of Array.from(text)){if(line&&ctx.measureText(line+char).width>maxWidth){lines.push(line);line=char;}else line+=char;}if(line)lines.push(line);return lines;}
+async function drawRankingJacket(ctx,artwork,x,y,size){
+  ctx.save();ctx.beginPath();ctx.roundRect(x,y,size,size,6);ctx.clip();
+  try{
+    if(artwork){
+      const name=new URL(artwork).pathname.split('/').pop();
+      if(!/^[a-z0-9]+\.(jpg|png)$/.test(name))throw new Error('Invalid jacket');
+      const response=await fetch(`./jackets/${name}`,{signal:AbortSignal.timeout(15000)});
+      if(!response.ok)throw new Error('Jacket unavailable');
+      const blob=await response.blob();
+      if(typeof createImageBitmap==='function'){
+        const bitmap=await createImageBitmap(blob,{resizeWidth:256,resizeHeight:256,resizeQuality:'high'});
+        try{ctx.drawImage(bitmap,x,y,size,size);}finally{bitmap.close();}
+      }else{
+        const url=URL.createObjectURL(blob),image=new Image();
+        try{image.src=url;await image.decode();ctx.drawImage(image,x,y,size,size);}finally{URL.revokeObjectURL(url);}
+      }
+    }else{
+      ctx.fillStyle='#e8ecf2';ctx.fillRect(x,y,size,size);ctx.fillStyle='#8491a4';
+      ctx.font=`500 ${size/2}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('♪',x+size/2,y+size/2);
+    }
+  }catch{throw new Error('ジャケット画像を読み込めませんでした。通信状態を確認して、もう一度お試しください。');}
+  finally{ctx.restore();}
+  ctx.save();ctx.strokeStyle='#17203322';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x,y,size,size,6);ctx.stroke();ctx.restore();
+}
 async function rankingPNG(){
   if(document.fonts?.ready)await document.fonts.ready;
   const data=resultData(),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('画像を作成できませんでした。別のブラウザをお試しください。');
   const font='system-ui, "Segoe UI", "Noto Sans JP", sans-serif';
-  const rows=data.songs.map((title,i)=>{ctx.font=`700 ${i<3?34:30}px ${font}`;const lines=wrapText(ctx,title,770);return {lines,height:Math.max(i<3?122:90,lines.length*48+38)};});
+  const rows=data.songs.map((title,i)=>{ctx.font=`700 ${i<3?34:30}px ${font}`;const lines=wrapText(ctx,title,680);return {lines,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(i<3?138:114,lines.length*48+38)};});
   ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
   const header=230+Math.min(names.length,2)*36,height=header+rows.reduce((n,r)=>n+r.height,0)+130;
   const scale=Math.min(1,14000/height,Math.sqrt(14000000/(1080*height)));
@@ -148,7 +172,7 @@ async function rankingPNG(){
   ctx.strokeStyle='#c6a450';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(950+i*21,52);ctx.lineTo(980+i*21,82);ctx.stroke();}
   const metals=[{light:'#fff1bb',mid:'#d4aa3e',rim:'#b89534',ink:'#433213',row:'#f6e7b3'},{light:'#f7fafc',mid:'#aab5c3',rim:'#99a5b5',ink:'#303a47',row:'#dfe5ed'},{light:'#f4cba5',mid:'#ba855d',rim:'#ad7c52',ink:'#4d3020',row:'#ecd3bc'}];
   let y=header;
-  rows.forEach((row,i)=>{
+  for(const [i,row] of rows.entries()){
     const metal=metals[i];
     const fill=ctx.createLinearGradient(64,y,1016,y);fill.addColorStop(0,metal?.row||'#ffffff');fill.addColorStop(1,metal?'#fffdfa':'#ffffff');
     ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(64,y,952,row.height-10,10);ctx.fill();ctx.strokeStyle=metal?.rim||'#e2e5eb';ctx.lineWidth=1;ctx.stroke();
@@ -160,11 +184,13 @@ async function rankingPNG(){
       ctx.beginPath();ctx.arc(126,cy,31,0,Math.PI*2);ctx.strokeStyle='#ffffff99';ctx.stroke();
     }
     ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=metal?.ink||'#5e6878';ctx.font=`700 ${metal?39:34}px ${font}`;ctx.fillText(String(i+1),126,cy);ctx.restore();
+    const jacketSize=i<3?100:80;
+    await drawRankingJacket(ctx,row.artwork,188,cy-jacketSize/2,jacketSize);
     ctx.fillStyle='#172033';ctx.font=`700 ${i<3?34:30}px ${font}`;
     const top=y+(row.height-10-row.lines.length*48)/2+37;
-    row.lines.forEach((line,j)=>ctx.fillText(line,210,top+j*48));
+    row.lines.forEach((line,j)=>ctx.fillText(line,316,top+j*48));
     y+=row.height;
-  });
+  }
   ctx.fillStyle='#5e6878';ctx.font=`500 20px ${font}`;ctx.fillText('非公式ファンサイト',64,height-65);ctx.textAlign='right';ctx.fillText(`${data.date.replaceAll('-','.')} ／ ${data.total}曲から`,1016,height-65);
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像を生成できませんでした。')),'image/png'));
 }
