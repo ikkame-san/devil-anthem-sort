@@ -30,6 +30,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html styles.css app.js engine.js songs.js favicon.svg _site/
+          sed -i "s|styles.css|styles.css?v=$GITHUB_SHA|;s|app.js|app.js?v=$GITHUB_SHA|" _site/index.html
           touch _site/.nojekyll
       - name: Package official jacket images
         run: node scripts/build-jackets.mjs _site/jackets
