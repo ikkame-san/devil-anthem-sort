@@ -3,27 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#d9fa59">
-  <meta name="description" content="Devil ANTHEM.の好きな曲を選んで、自分だけのランキングを作ろう。2曲ずつ選ぶ楽曲ソートと、保存・共有できるランキング画像。非公式ファンサイト。">
-  <meta property="og:title" content="Devil ANTHEM. SORT | あなたの好きが、アンセムになる。">
-  <meta property="og:description" content="好きな曲を選んで、比べて、あなただけのランキングに。ランキング画像の保存・共有も。">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="選んだDevil ANTHEM.の楽曲を好きな順に並べて、ランキング画像を保存・共有できます。非公式ファンサイト。">
+  <meta property="og:title" content="Devil ANTHEM.楽曲ソート">
+  <meta property="og:description" content="曲を選び、好きな順に並べてランキングを作成。画像の保存・共有にも対応。">
   <meta property="og:type" content="website">
-  <title>Devil ANTHEM. SORT — 好きの順番を、見つけよう。</title>
+  <title>Devil ANTHEM.楽曲ソート</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="./" aria-label="Devil ANTHEM. SORT トップ">
-      <span class="brand-icon" aria-hidden="true">✳</span><span>Devil ANTHEM.<small>SONG SORT / UNOFFICIAL</small></span>
-    </a>
-    <a class="official-link" href="https://devilanthem.net/" target="_blank" rel="noopener noreferrer">OFFICIAL SITE <span aria-hidden="true">↗</span></a>
+    <a class="brand" href="./">Devil ANTHEM.楽曲ソート</a>
+    <a class="official-link" href="https://devilanthem.net/" target="_blank" rel="noopener noreferrer">公式サイト ↗</a>
   </header>
   <main id="app" tabindex="-1"></main>
-  <footer class="site-footer"><span>Devil ANTHEM. SORT <span class="muted">／ 非公式ファンサイト</span></span><span>好きな曲と、好きなだけ。 <span class="footer-star" aria-hidden="true">✳</span></span></footer>
+  <footer class="site-footer">Devil ANTHEM.楽曲ソート ／ 非公式ファンサイト</footer>
   <div id="toast" role="status" aria-live="polite"></div>
-  <dialog id="confirm-dialog"><form method="dialog"><span class="eyebrow">START OVER</span><h2>新しいランキングを作りますか？</h2><p>保存されているソートの続きは消えます。</p><div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button value="confirm" class="primary">新しく始める ↗</button></div></form></dialog>
+  <dialog id="confirm-dialog"><form method="dialog"><h2>新しいランキングを作りますか？</h2><p>保存されているソートの続きは消えます。</p><div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button value="confirm" class="primary">新しく始める</button></div></form></dialog>
   <noscript><p class="noscript">このサイトにはJavaScriptが必要です。ブラウザの設定で有効にしてください。</p></noscript>
 </body>
 </html>
