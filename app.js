@@ -104,7 +104,7 @@ function sortHTML(){
 function resultData(){return shared||{v:1,songs:rankedIds(session).map(id=>song(id).title),owner,date:completedAt||today(),total:session.total};}
 function resultHTML(){
   const data=resultData();
-  return `${steps(2)}<div class="results-hero"><h1>${shared?'共有されたランキング':'ランキング完成'}</h1><p>${data.total}曲から、上位${data.songs.length}曲</p></div>${shared?'<p class="result-readonly-note">共有されたランキングです。自分のソートの途中保存も、そのまま残っています。</p>':''}<div class="result-layout"><section class="ranking-poster" aria-label="完成したランキング"><div class="poster-head"><h2>Devil ANTHEM.楽曲ソート</h2><p class="small-note">上位${data.songs.length}曲</p><p class="owner" id="poster-owner">${escape(data.owner||'')}</p></div><ol class="result-ranking">${data.songs.map((title,i)=>`<li class="${i<3?`podium podium-${i+1}`:''}"><span class="rank-position ${i<3?`medal medal-${i+1}`:''}">${i+1}</span>${jacket(allSongs().find(s=>s.title===title)||{})}<span class="song-info"><span class="song-title">${escape(title)}</span>${videoButton(allSongs().find(s=>s.title===title)||{title})}</span></li>`).join('')}</ol><div class="poster-footer" style="justify-content:flex-end"><span>${data.date.replaceAll('-','.')} ／ ${data.total}曲から</span></div></section><aside class="result-actions"><h3>保存・共有</h3>${shared?'':`<label for="owner">画像に入れる名前（任意）</label><input id="owner" maxlength="50" placeholder="あなたの名前 / ニックネーム" value="${escape(owner)}">`}<button class="primary" data-action="save-image">画像を保存する ↓</button><button class="secondary" data-action="share-image">画像を共有する ↗</button><button class="secondary" data-action="copy-link">結果リンクをコピー</button><button class="text-button" data-action="copy-text">ランキングのテキストをコピー</button><a class="x-share" id="x-share" href="${escape(xURL())}" target="_blank" rel="noopener noreferrer">Xでランキングをシェア ↗</a><p class="small-note">画像はPNGで保存できます。画像共有は対応ブラウザで使えます。共有先でも同じランキングが見られる結果リンク付き。</p><div class="settings-divider"></div>${!shared&&history.length?'<button class="text-button" data-action="undo">↶ 最後の選択をやり直す</button>':''}<button class="secondary" data-action="to-setup">${shared?'自分のランキングを作る':'曲を選び直す'}</button></aside></div>`;
+  return `${steps(2)}<div class="results-hero"><h1>${shared?'共有されたランキング':'ランキング完成'}</h1><p>${data.total}曲から、上位${data.songs.length}曲</p></div>${shared?'<p class="result-readonly-note">共有されたランキングです。自分のソートの途中保存も、そのまま残っています。</p>':''}<div class="result-layout"><section class="ranking-poster" aria-label="完成したランキング"><div class="poster-head"><h2><span class="poster-like">好きな</span>Devil ANTHEM.楽曲</h2><p class="poster-top">TOP<span>${data.songs.length}</span></p><p class="owner" id="poster-owner">${escape(data.owner||'')}</p></div><ol class="result-ranking">${data.songs.map((title,i)=>`<li class="${i<3?`podium podium-${i+1}`:''}"><span class="rank-position ${i<3?`medal medal-${i+1}`:''}">${i+1}</span>${jacket(allSongs().find(s=>s.title===title)||{})}<span class="song-info"><span class="song-title">${escape(title)}</span>${videoButton(allSongs().find(s=>s.title===title)||{title})}</span></li>`).join('')}</ol><div class="poster-footer" style="justify-content:flex-end"><span>${data.date.replaceAll('-','.')} ／ ${data.total}曲から</span></div></section><aside class="result-actions"><h3>保存・共有</h3>${shared?'':`<label for="owner">画像に入れる名前（任意）</label><input id="owner" maxlength="50" placeholder="あなたの名前 / ニックネーム" value="${escape(owner)}">`}<button class="primary" data-action="save-image">画像を保存する ↓</button><button class="secondary" data-action="share-image">画像を共有する ↗</button><button class="secondary" data-action="copy-link">結果リンクをコピー</button><button class="text-button" data-action="copy-text">ランキングのテキストをコピー</button><a class="x-share" id="x-share" href="${escape(xURL())}" target="_blank" rel="noopener noreferrer">Xでランキングをシェア ↗</a><p class="small-note">画像はPNGで保存できます。画像共有は対応ブラウザで使えます。共有先でも同じランキングが見られる結果リンク付き。</p><div class="settings-divider"></div>${!shared&&history.length?'<button class="text-button" data-action="undo">↶ 最後の選択をやり直す</button>':''}<button class="secondary" data-action="to-setup">${shared?'自分のランキングを作る':'曲を選び直す'}</button></aside></div>`;
 }
 function render(){
   if (view==='sort'&&!activeNode(session)) {view='result';if (!completedAt) {completedAt=today();persist();}}
@@ -165,7 +165,7 @@ async function rankingPNG(){
     return {lines,lineHeight,artwork:allSongs().find(s=>s.title===title)?.artwork,height:Math.max(topThree?138:104,lines.length*lineHeight+(topThree?38:28))};
   });
   ctx.font=`500 25px ${font}`;const names=wrapText(ctx,data.owner,900);
-  const header=230+Math.min(names.length,2)*36;
+  const header=260+Math.min(names.length,2)*36;
   let nextY=header;
   for(const row of rows.slice(0,3)){Object.assign(row,{x:64,y:nextY,width:952});nextY+=row.height;}
   const columnTop=nextY,leftCount=Math.ceil(Math.max(0,rows.length-3)/2);
@@ -179,12 +179,20 @@ async function rankingPNG(){
   const scale=Math.min(1,14000/height,Math.sqrt(14000000/(1080*height)));
   canvas.width=Math.floor(1080*scale);canvas.height=Math.floor(height*scale);ctx.scale(scale,scale);
   ctx.fillStyle='#fbfaf6';ctx.fillRect(0,0,1080,height);
-  ctx.fillStyle='#172033';ctx.fillRect(0,0,1080,header-20);
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1080,header-20);
   ctx.strokeStyle='#c6a450';ctx.lineWidth=3;ctx.strokeRect(24,24,1032,height-48);
-  ctx.fillStyle='#ffffff';ctx.font=`700 44px ${font}`;ctx.fillText('Devil ANTHEM.楽曲ソート',64,96);
-  ctx.fillStyle='#ead598';ctx.font=`600 28px ${font}`;ctx.fillText(`上位${data.songs.length}曲`,64,151);
-  ctx.fillStyle='#d6dce7';ctx.font=`500 25px ${font}`;names.slice(0,2).forEach((line,i)=>ctx.fillText(line,64,196+i*36));
-  ctx.strokeStyle='#c6a450';ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(950+i*21,52);ctx.lineTo(980+i*21,82);ctx.stroke();}
+  ctx.font=`800 48px ${font}`;
+  const headline='好きなDevil ANTHEM.楽曲',headlineX=(1080-ctx.measureText(headline).width)/2;
+  ctx.fillStyle='#ffe4ee';ctx.beginPath();ctx.roundRect(headlineX-4,95,ctx.measureText('好きな').width+8,14,7);ctx.fill();
+  ctx.fillStyle='#243657';ctx.fillText(headline,headlineX,102);
+  ctx.font=`900 78px ${font}`;
+  const count=String(data.songs.length),topWidth=ctx.measureText('TOP').width,totalWidth=topWidth+ctx.measureText(count).width,topX=(1080-totalWidth)/2;
+  ctx.fillStyle='#eef6ff';ctx.beginPath();ctx.roundRect(topX-32,126,totalWidth+64,98,26);ctx.fill();
+  ctx.fillStyle='#2563eb';ctx.fillText('TOP',topX,202);ctx.fillStyle='#ee5b94';ctx.fillText(count,topX+topWidth,202);
+  ctx.save();ctx.lineWidth=5;ctx.lineCap='round';
+  for(const [x,y,color] of [[140,178,'#ee85ad'],[940,164,'#e8b745']]){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(x-12,y);ctx.lineTo(x+12,y);ctx.moveTo(x,y-12);ctx.lineTo(x,y+12);ctx.stroke();}
+  ctx.restore();
+  ctx.save();ctx.textAlign='center';ctx.fillStyle='#5e6878';ctx.font=`500 25px ${font}`;names.slice(0,2).forEach((line,i)=>ctx.fillText(line,540,262+i*36));ctx.restore();
   const metals=[{light:'#fff1bb',mid:'#d4aa3e',rim:'#b89534',ink:'#433213',row:'#f6e7b3'},{light:'#f7fafc',mid:'#aab5c3',rim:'#99a5b5',ink:'#303a47',row:'#dfe5ed'},{light:'#f4cba5',mid:'#ba855d',rim:'#ad7c52',ink:'#4d3020',row:'#ecd3bc'}];
   for(const [i,row] of rows.entries()){
     const metal=metals[i],{x,y,width}=row;
